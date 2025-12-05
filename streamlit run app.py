@@ -1,54 +1,75 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Compounding Calculator", page_icon="💰")
+st.set_page_config(page_title="Investment Plans Dashboard", page_icon="💰", layout="wide")
 
-st.title("💰 Compounding Calculator")
-st.write("Compare returns with reinvesting vs withdrawing monthly.")
+st.title("💰 Investment Plans Dashboard")
+st.write("Compare multiple investment strategies side-by-side.")
 
-# Inputs
-principal = st.number_input("Initial Amount (₹)", min_value=0.0, value=100000.0, step=100.0)
-monthly_rate_percent = st.number_input("Monthly Return (%)", min_value=0.0, value=5.0, step=0.1)
-months = st.number_input("Number of Months", min_value=1, value=12, step=1)
+# ---------------- INPUTS ----------------
+st.sidebar.header("Input Parameters")
 
-monthly_rate = monthly_rate_percent / 100
+principal = st.sidebar.number_input("Initial Amount (₹)", min_value=0.0, value=100000.0, step=1000.0)
+months = st.sidebar.number_input("Investment Duration (Months)", min_value=1, value=12, step=1)
 
-# --- Reinvesting (compounding) ---
-final_reinvest = principal * (1 + monthly_rate) ** months
-profit_reinvest = final_reinvest - principal
+st.sidebar.markdown("### Monthly Return Rates (%)")
+rate_A = st.sidebar.number_input("Plan A – Monthly Payout (%)", min_value=0.0, value=5.0)
+rate_B = st.sidebar.number_input("Plan B – Reinvest Monthly (%)", min_value=0.0, value=5.0)
+rate_C = st.sidebar.number_input("Plan C – High Growth Locked (%)", min_value=0.0, value=4.0)
+rate_D = st.sidebar.number_input("Plan D – Hybrid Plan (%)", min_value=0.0, value=5.0)
 
-# --- Monthly Withdrawal (no compounding) ---
-monthly_payout = principal * monthly_rate
-total_withdrawal = monthly_payout * months
-profit_withdrawal = total_withdrawal
+# Convert to decimal
+rA, rB, rC, rD = rate_A/100, rate_B/100, rate_C/100, rate_D/100
 
-# Output
-st.subheader("📈 Results")
+# ---------------- CALCULATIONS ----------------
 
-col1, col2 = st.columns(2)
+# Plan A – Monthly Payout
+monthly_payout_A = principal * rA
+final_A = principal  # principal remains same
+profit_A = monthly_payout_A * months
 
-with col1:
-    st.markdown("### 🔁 Reinvesting Every Month")
-    st.write(f"**Final Amount:** ₹{final_reinvest:,.2f}")
-    st.write(f"**Total Profit:** ₹{profit_reinvest:,.2f}")
+# Plan B – Monthly Reinvesting (Compounding)
+final_B = principal * (1 + rB) ** months
+profit_B = final_B - principal
 
-with col2:
-    st.markdown("### 💵 Withdrawing Monthly")
-    st.write(f"**Monthly Withdrawal:** ₹{monthly_payout:,.2f}")
-    st.write(f"**Total Withdrawal in {months} months:** ₹{total_withdrawal:,.2f}")
-    st.write(f"**Total Profit:** ₹{profit_withdrawal:,.2f}")
+# Plan C – Locked Growth for full duration
+final_C = principal * (1 + rC) ** months
+profit_C = final_C - principal
 
-# Comparison summary
-st.subheader("📊 Comparison Summary")
-st.write(f"**Extra earnings due to compounding:** ₹{profit_reinvest - profit_withdrawal:,.2f}")
+# Plan D – Hybrid 50% payout, 50% reinvest
+half_principal = principal / 2
+reinvest_D = (half_principal) * (1 + rD) ** months
+withdrawal_D = (half_principal * rD) * months
+final_D = reinvest_D + (half_principal)  # half principal remains constant but payouts separate
+profit_D = (reinvest_D - half_principal) + withdrawal_D
 
-# Chart Data
-df = pd.DataFrame({
-    "Month": list(range(1, months + 1)),
-    "Reinvested Amount": [principal * (1 + monthly_rate) ** m for m in range(1, months + 1)],
-    "Total Withdrawal (No Compounding)": [monthly_payout * m for m in range(1, months + 1)]
+# ---------------- SUMMARY TABLE ----------------
+
+summary = pd.DataFrame({
+    "Plan": ["Plan A – Monthly Payout", "Plan B – Full Reinvest", "Plan C – High Growth", "Plan D – Hybrid 50/50"],
+    "Final Amount (₹)": [final_A + profit_A, final_B, final_C, final_D],
+    "Total Profit (₹)": [profit_A, profit_B, profit_C, profit_D],
 })
 
-st.line_chart(df, x="Month", y=["Reinvested Amount", "Total Withdrawal (No Compounding)"])
+# ---------------- DISPLAY ----------------
+st.header("📊 Plan Comparison Summary")
+st.dataframe(summary.style.format({"Final Amount (₹)": "{:,.2f}", "Total Profit (₹)": "{:,.2f}"}))
 
-st.info("This tool is for financial comparison and educational use only.")
+# ---------------- CHART ----------------
+st.header("📈 Profit Comparison Chart")
+chart_df = summary.set_index("Plan")["Total Profit (₹)"]
+st.bar_chart(chart_df)
+
+# ---------------- GROWTH CHARTS ----------------
+st.header("📉 Monthly Growth – Reinvesting Plans Only")
+
+growth_df = pd.DataFrame({
+    "Month": list(range(1, months + 1)),
+    "Plan B – Reinvest": [principal * (1 + rB) ** m for m in range(1, months + 1)],
+    "Plan C – High Growth": [principal * (1 + rC) ** m for m in range(1, months + 1)],
+    "Plan D – Reinvest Portion": [(principal/2) * (1 + rD) ** m for m in range(1, months + 1)]
+})
+
+st.line_chart(growth_df, x="Month", y=["Plan B – Reinvest", "Plan C – High Growth", "Plan D – Reinvest Portion"])
+
+st.success("Dashboard Ready ✔ – You can customize plan names, rates, and logic anytime.")
