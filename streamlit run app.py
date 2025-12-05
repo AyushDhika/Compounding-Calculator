@@ -37,12 +37,29 @@ final_C = principal * (1 + rC) ** months
 profit_C = final_C - principal
 
 # Plan D – Hybrid 50% payout, 50% reinvest
-half_principal = principal / 2
-reinvest_D = (half_principal) * (1 + rD) ** months
-withdrawal_D = (half_principal * rD) * months
-final_D = reinvest_D + (half_principal)  # half principal remains constant but payouts separate
-profit_D = (reinvest_D - half_principal) + withdrawal_D
+# ---------------- HYBRID PLAN SETTINGS ----------------
+st.sidebar.markdown("### Hybrid Plan Settings")
+hybrid_reinvest_percent = st.sidebar.slider("Reinvest %", 0, 100, 50)
+hybrid_withdraw_percent = 100 - hybrid_reinvest_percent
 
+# Convert to decimals
+hybrid_reinvest_ratio = hybrid_reinvest_percent / 100
+hybrid_withdraw_ratio = hybrid_withdraw_percent / 100
+
+# ---------------- PLAN D CALCULATION ----------------
+# Split principal based on chosen ratio
+principal_reinvest = principal * hybrid_reinvest_ratio
+principal_withdraw = principal * hybrid_withdraw_ratio
+
+# Reinvested portion (compounds)
+reinvest_growth_D = principal_reinvest * (1 + rD) ** months
+
+# Withdrawn portion (fixed monthly payouts)
+withdrawal_monthly_D = principal_withdraw * rD
+total_withdrawal_D = withdrawal_monthly_D * months
+
+final_D = reinvest_growth_D + principal_withdraw
+profit_D = (reinvest_growth_D - principal_reinvest) + total_withdrawal_D
 # ---------------- SUMMARY TABLE ----------------
 
 summary = pd.DataFrame({
